@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>2.16.1</jackson.version>
         <junit.version>4.13.2</junit.version>
-        <derby.version>10.16.1.1</derby.version>
+        <derby.version>10.14.2.0</derby.version>
     </properties>
     <dependencies>
         <dependency>

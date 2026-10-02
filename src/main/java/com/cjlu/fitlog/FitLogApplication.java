@@ -1,4 +1,4 @@
-﻿package com.cjlu.fitlog;
+package com.cjlu.fitlog;
 
 import com.cjlu.fitlog.cui.CuiMain;
 import com.cjlu.fitlog.gui.GuiMain;

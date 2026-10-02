@@ -26,42 +26,46 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
 
     private void open() {
         try {
+            DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
             conn = DriverManager.getConnection(jdbcUrl);
             conn.setAutoCommit(true);
         } catch (SQLException e) {
-            throw new FitLogException("Cannot open embedded Derby database", e);
+            throw new FitLogException("Cannot open embedded Derby database: " + e.getMessage(), e);
         }
     }
 
     private void initSchema() {
-        try (Statement st = conn.createStatement()) {
-            st.execute(
-                "CREATE TABLE IF NOT EXISTS exercises (" +
+        execIfNotExists("CREATE TABLE exercises (" +
                 "  name VARCHAR(64) PRIMARY KEY," +
                 "  muscle_group VARCHAR(16) NOT NULL," +
                 "  type VARCHAR(16) NOT NULL" +
                 ")");
-            st.execute(
-                "CREATE TABLE IF NOT EXISTS sessions (" +
+        execIfNotExists("CREATE TABLE sessions (" +
                 "  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
                 "  date DATE NOT NULL," +
                 "  notes VARCHAR(256)" +
                 ")");
-            st.execute(
-                "CREATE TABLE IF NOT EXISTS sets (" +
+        execIfNotExists("CREATE TABLE sets (" +
                 "  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY," +
                 "  session_id INTEGER NOT NULL REFERENCES sessions(id)," +
                 "  exercise_name VARCHAR(64) NOT NULL REFERENCES exercises(name)," +
                 "  weight_kg DOUBLE NOT NULL," +
                 "  reps INTEGER NOT NULL" +
                 ")");
-            st.execute(
-                "CREATE TABLE IF NOT EXISTS bodyweights (" +
+        execIfNotExists("CREATE TABLE bodyweights (" +
                 "  date DATE PRIMARY KEY," +
                 "  kg DOUBLE NOT NULL" +
                 ")");
+    }
+
+    private void execIfNotExists(String sql) {
+        try (Statement st = conn.createStatement()) {
+            st.execute(sql);
         } catch (SQLException e) {
-            throw new FitLogException("Cannot initialise Derby schema", e);
+            // X0Y32 = table already exists; ignore on restart
+            if (!"X0Y32".equals(e.getSQLState())) {
+                throw new FitLogException("Cannot initialise Derby schema: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -84,19 +88,18 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
 
     @Override
     public void saveExercise(Exercise e) {
-        String sql = "MERGE INTO exercises AS t " +
-                     "USING (VALUES ?) AS s(name) " +
-                     "ON t.name = s.name " +
-                     "WHEN MATCHED THEN UPDATE SET muscle_group=?, type=? " +
-                     "WHEN NOT MATCHED THEN INSERT (name, muscle_group, type) VALUES (?,?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, e.getName());
-            ps.setString(2, e.getMuscleGroup().name());
-            ps.setString(3, e.getType().name());
-            ps.setString(4, e.getName());
-            ps.setString(5, e.getMuscleGroup().name());
-            ps.setString(6, e.getType().name());
-            ps.executeUpdate();
+        try {
+            try (PreparedStatement del = conn.prepareStatement("DELETE FROM exercises WHERE name=?")) {
+                del.setString(1, e.getName());
+                del.executeUpdate();
+            }
+            try (PreparedStatement ins = conn.prepareStatement(
+                    "INSERT INTO exercises (name, muscle_group, type) VALUES (?,?,?)")) {
+                ins.setString(1, e.getName());
+                ins.setString(2, e.getMuscleGroup().name());
+                ins.setString(3, e.getType().name());
+                ins.executeUpdate();
+            }
         } catch (SQLException ex) {
             throw new FitLogException("save exercise failed", ex);
         }
@@ -181,15 +184,16 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
 
     @Override
     public void saveBodyweight(BodyweightEntry b) {
-        String sql = "MERGE INTO bodyweights AS t USING (VALUES ?) AS s(d) " +
-                     "ON t.date = s.d WHEN MATCHED THEN UPDATE SET kg=? " +
-                     "WHEN NOT MATCHED THEN INSERT (date, kg) VALUES (?,?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setDate(1, java.sql.Date.valueOf(b.getDate()));
-            ps.setDouble(2, b.getKg());
-            ps.setDate(3, java.sql.Date.valueOf(b.getDate()));
-            ps.setDouble(4, b.getKg());
-            ps.executeUpdate();
+        try {
+            try (PreparedStatement del = conn.prepareStatement("DELETE FROM bodyweights WHERE date=?")) {
+                del.setDate(1, java.sql.Date.valueOf(b.getDate()));
+                del.executeUpdate();
+            }
+            try (PreparedStatement ins = conn.prepareStatement("INSERT INTO bodyweights (date, kg) VALUES (?,?)")) {
+                ins.setDate(1, java.sql.Date.valueOf(b.getDate()));
+                ins.setDouble(2, b.getKg());
+                ins.executeUpdate();
+            }
         } catch (SQLException e) {
             throw new FitLogException("save bodyweight failed", e);
         }
