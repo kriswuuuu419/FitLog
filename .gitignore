@@ -1,6 +1,25 @@
+# Build output
 target/
-data/
 *.class
+
+# Runtime data (created on first run; never commit)
+data/
+*.log
+
+# IDE / editor
 .idea/
 *.iml
 .vscode/
+
+# Preview / scratch folders
+.preview/
+.pylibs/
+template_extracted/
+
+# Report-generation scripts and deliverables (reports and videos are shipped
+# in the submission ZIP, not tracked inside the source repository)
+*.py
+*.bat
+*.docx
+*.zip
+*.png
