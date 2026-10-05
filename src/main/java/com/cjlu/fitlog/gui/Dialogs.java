@@ -249,34 +249,20 @@ class PrBoardDialog extends JDialog {
         sp.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         add(sp, BorderLayout.CENTER);
 
-        JButton delBtn = new JButton("Delete Exercise");
-        delBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        delBtn.setBackground(new Color(220, 38, 38));
-        delBtn.setForeground(Color.WHITE);
-        delBtn.setFocusPainted(false);
-        delBtn.setPreferredSize(new Dimension(140, 34));
+        // The PR Board is a read-only view. Deleting an exercise belongs to the
+        // Exercise Library tab, so this dialog only offers Close - removing a risky
+        // red delete action from a statistics screen.
+        JButton closeBtn = new JButton("Close");
+        closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        closeBtn.setBackground(new Color(22, 163, 74));
+        closeBtn.setForeground(Color.WHITE);
+        closeBtn.setFocusPainted(false);
+        closeBtn.setPreferredSize(new Dimension(110, 34));
         JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        bp.add(delBtn);
+        bp.add(closeBtn);
         add(bp, BorderLayout.SOUTH);
 
-        delBtn.addActionListener(e -> {
-            int row = t.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(this, "Select an exercise first"); return; }
-            String name = t.getValueAt(row, 0).toString();
-            int confirm = JOptionPane.showConfirmDialog(this,
-                "Delete exercise \"" + name + "\" and all its records?", "Confirm", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    service.deleteExercise(name);
-                    m.removeRow(row);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this,
-                        "Cannot delete this exercise: " + ex.getMessage()
-                        + "\nIt is still referenced by saved workouts; remove those sessions first.",
-                        "Delete failed", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
+        closeBtn.addActionListener(e -> dispose());
 
         setSize(420, 380); setLocationRelativeTo(parent);
     }
