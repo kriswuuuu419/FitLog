@@ -48,7 +48,17 @@ class AddExerciseDialog extends JDialog {
                         (WorkoutType) type.getSelectedItem());
                     return null;
                 }
-                @Override protected void done() { dispose(); onDone.run(); }
+                @Override protected void done() {
+                    try {
+                        get();
+                        dispose();
+                        onDone.run();
+                    } catch (Exception ex) {
+                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                        JOptionPane.showMessageDialog(null, cause.getMessage(),
+                                "Invalid input", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
             }.execute();
         });
         pack(); setLocationRelativeTo(parent);
@@ -105,7 +115,17 @@ class BodyweightDialog extends JDialog {
                 LocalDate d = LocalDate.parse(date.getText().trim());
                 new SwingWorker<Void, Void>() {
                     @Override protected Void doInBackground() { service.recordBodyweight(d, k); return null; }
-                    @Override protected void done() { dispose(); onDone.run(); }
+                    @Override protected void done() {
+                    try {
+                        get();
+                        dispose();
+                        onDone.run();
+                    } catch (Exception ex) {
+                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                        JOptionPane.showMessageDialog(null, cause.getMessage(),
+                                "Invalid input", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
                 }.execute();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage());
@@ -160,7 +180,17 @@ class AddSessionDialog extends JDialog {
                         service.finishSession(s);
                         return null;
                     }
-                    @Override protected void done() { dispose(); onDone.run(); }
+                    @Override protected void done() {
+                    try {
+                        get();
+                        dispose();
+                        onDone.run();
+                    } catch (Exception ex) {
+                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                        JOptionPane.showMessageDialog(null, cause.getMessage(),
+                                "Invalid input", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
                 }.execute();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage());
@@ -216,8 +246,15 @@ class PrBoardDialog extends JDialog {
             int confirm = JOptionPane.showConfirmDialog(this,
                 "Delete exercise \"" + name + "\" and all its records?", "Confirm", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                service.deleteExercise(name);
-                m.removeRow(row);
+                try {
+                    service.deleteExercise(name);
+                    m.removeRow(row);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this,
+                        "Cannot delete this exercise: " + ex.getMessage()
+                        + "\nIt is still referenced by saved workouts; remove those sessions first.",
+                        "Delete failed", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 
@@ -301,8 +338,14 @@ class BodyweightHistoryDialog extends JDialog {
             int confirm = JOptionPane.showConfirmDialog(this,
                 "Delete bodyweight record on " + d + "?", "Confirm", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                service.deleteBodyweight(d);
-                m.removeRow(row);
+                try {
+                    service.deleteBodyweight(d);
+                    m.removeRow(row);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this,
+                        "Cannot delete this record: " + ex.getMessage(),
+                        "Delete failed", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 

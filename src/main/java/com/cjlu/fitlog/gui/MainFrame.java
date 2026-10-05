@@ -252,7 +252,16 @@ public class MainFrame extends JFrame {
         java.time.LocalDate date = java.time.LocalDate.parse(dateStr);
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() { service.deleteSession(date); return null; }
-            @Override protected void done() { refreshWorkouts(); }
+            @Override protected void done() {
+                try {
+                    get();
+                    refreshWorkouts();
+                } catch (Exception ex) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    JOptionPane.showMessageDialog(MainFrame.this, cause.getMessage(),
+                            "Delete failed", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         }.execute();
     }
 
@@ -268,7 +277,16 @@ public class MainFrame extends JFrame {
         if (confirm != JOptionPane.YES_OPTION) return;
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() { service.deleteExercise(name); return null; }
-            @Override protected void done() { refreshExercises(); }
+            @Override protected void done() {
+                try {
+                    get();
+                    refreshExercises();
+                } catch (Exception ex) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    JOptionPane.showMessageDialog(MainFrame.this, cause.getMessage(),
+                            "Delete failed", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         }.execute();
     }
 
