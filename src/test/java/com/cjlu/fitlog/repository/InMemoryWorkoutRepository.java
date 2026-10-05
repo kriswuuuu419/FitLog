@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-/** 测试用内存实现，不写文件。 */
+/** In-memory implementation used by unit tests; writes nothing to disk. */
 public class InMemoryWorkoutRepository implements WorkoutRepository {
     public final List<Exercise> exercises = new ArrayList<>();
     public final List<WorkoutSession> sessions = new ArrayList<>();

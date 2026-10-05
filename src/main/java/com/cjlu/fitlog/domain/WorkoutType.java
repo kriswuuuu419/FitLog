@@ -1,8 +1,8 @@
 package com.cjlu.fitlog.domain;
 
 public enum WorkoutType {
-    COMPOUND("复合动作"),
-    ISOLATION("孤立动作");
+    COMPOUND("Compound"),
+    ISOLATION("Isolation");
 
     private final String label;
 

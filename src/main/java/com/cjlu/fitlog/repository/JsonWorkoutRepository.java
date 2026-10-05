@@ -21,7 +21,7 @@ import java.util.Optional;
 
 public class JsonWorkoutRepository implements WorkoutRepository {
 
-    /** 顶层快照：一次序列化所有聚合根。 */
+    /** Top-level snapshot: all aggregate roots are serialized together. */
     public static class Snapshot {
         public List<Exercise> exercises = new ArrayList<>();
         public List<WorkoutSession> sessions = new ArrayList<>();
@@ -52,11 +52,11 @@ public class JsonWorkoutRepository implements WorkoutRepository {
             if (snapshot.sessions == null) snapshot.sessions = new ArrayList<>();
             if (snapshot.bodyweights == null) snapshot.bodyweights = new ArrayList<>();
         } catch (IOException e) {
-            throw new FitLogException("数据文件读取失败: " + file, e);
+            throw new FitLogException("Failed to read data file: " + file, e);
         }
     }
 
-    /** 原子写：先写临时文件，再原子替换，避免半截文件损坏原数据。 */
+    /** Atomic write: write a temp file first, then atomically replace it so a partial write cannot corrupt the data. */
     private void persist() {
         try {
             Path parent = file.toAbsolutePath().getParent();
@@ -70,7 +70,7 @@ public class JsonWorkoutRepository implements WorkoutRepository {
                 Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("数据保存失败", e);
+            throw new UncheckedIOException("Failed to save data", e);
         }
     }
 

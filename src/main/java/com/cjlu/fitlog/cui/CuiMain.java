@@ -28,13 +28,13 @@ public class CuiMain {
     }
 
     public void run() {
-        System.out.println("=== FitLog 健身训练日志 ===");
+        System.out.println("=== FitLog Workout & Nutrition Journal ===");
         while (running) {
             printMenu();
             String choice = readLine("> ");
             try {
                 switch (choice) {
-                    case "0": running = false; System.out.println("再见!"); break;
+                    case "0": running = false; System.out.println("Goodbye!"); break;
                     case "1": handleAddExercise(); break;
                     case "2": handleListExercises(); break;
                     case "3": handleRecordWorkout(); break;
@@ -42,141 +42,141 @@ public class CuiMain {
                     case "5": handleShowPR(); break;
                     case "6": handleWeeklySummary(); break;
                     case "7": handleBodyweightAndNutrition(); break;
-                    default: System.out.println("无效选项，请重新输入");
+                    default: System.out.println("Invalid option, please try again");
                 }
             } catch (FitLogException ex) {
-                System.out.println("✗ " + ex.getMessage());
+                System.out.println("Error: " + ex.getMessage());
             } catch (IllegalArgumentException ex) {
-                System.out.println("✗ 输入不合法: " + ex.getMessage());
+                System.out.println("Error: invalid input - " + ex.getMessage());
             } catch (DateTimeParseException ex) {
-                System.out.println("✗ 日期格式不对，请用 YYYY-MM-DD（比如 2026-10-03），或直接回车用今天");
+                System.out.println("Error: invalid date; use YYYY-MM-DD (e.g. 2026-10-03), or press Enter for today");
             }
         }
     }
 
     private void printMenu() {
         System.out.println();
-        System.out.println("---- 主菜单 ----");
-        System.out.println("1. 新增动作");
-        System.out.println("2. 查看动作库");
-        System.out.println("3. 记录一次训练");
-        System.out.println("4. 查看历史训练");
-        System.out.println("5. 查看动作 PR");
-        System.out.println("6. 本周容量统计");
-        System.out.println("7. 记录体重 / 今日营养目标");
-        System.out.println("0. 退出");
+        System.out.println("---- Main menu ----");
+        System.out.println("1. Add exercise");
+        System.out.println("2. List exercises");
+        System.out.println("3. Record a workout");
+        System.out.println("4. View workout history");
+        System.out.println("5. Show exercise PR");
+        System.out.println("6. Weekly volume summary");
+        System.out.println("7. Log bodyweight / today's nutrition target");
+        System.out.println("0. Exit");
     }
 
-    // ---------- 1. 新增动作 ----------
+    // ---------- 1. Add exercise ----------
     private void handleAddExercise() {
         try {
-            String name = readLine("动作名称: ");
-            System.out.println("肌群: 1=胸 2=背 3=腿 4=肩 5=臂 6=核心");
-            MuscleGroup group = readEnum("选肌群 (1-6): ", MuscleGroup.class);
-            System.out.println("类型: 1=复合 2=孤立");
-            WorkoutType type = readEnum("选类型 (1-2): ", WorkoutType.class);
+            String name = readLine("Exercise name: ");
+            System.out.println("Muscle group: 1=Chest 2=Back 3=Legs 4=Shoulders 5=Arms 6=Core");
+            MuscleGroup group = readEnum("Choose muscle group (1-6): ", MuscleGroup.class);
+            System.out.println("Type: 1=Compound 2=Isolation");
+            WorkoutType type = readEnum("Choose type (1-2): ", WorkoutType.class);
             Exercise e = service.addExercise(name, group, type);
-            System.out.println("已添加: " + e);
+            System.out.println("Added: " + e);
         } catch (FitLogException ex) {
-            System.out.println("✗ " + ex.getMessage());
+            System.out.println("Error: " + ex.getMessage());
         }
     }
 
     private void handleListExercises() {
         List<Exercise> all = service.listExercises();
         if (all.isEmpty()) {
-            System.out.println("动作库为空，先添加几个动作");
+            System.out.println("Exercise library is empty; add a few exercises first");
             return;
         }
-        System.out.println("---- 动作库 (" + all.size() + ") ----");
+        System.out.println("---- Exercise library (" + all.size() + ") ----");
         for (int i = 0; i < all.size(); i++) {
             System.out.printf("%d. %s%n", i + 1, all.get(i));
         }
     }
 
-    // ---------- 3. 记录训练 ----------
+    // ---------- 3. Record a workout ----------
     private void handleRecordWorkout() {
         try {
-            String dateStr = readLine("训练日期 (YYYY-MM-DD，回车=今天): ");
+            String dateStr = readLine("Workout date (YYYY-MM-DD, Enter=today): ");
             LocalDate date = dateStr.isBlank()
                     ? LocalDate.now()
                     : LocalDate.parse(dateStr);
             WorkoutSession session = service.startSession(date, "");
             while (true) {
                 handleListExercises();
-                String name = readLine("输入动作名称 (:back 完成本次训练): ");
+                String name = readLine("Exercise name (:back to finish this workout): ");
                 if (":back".equalsIgnoreCase(name)) break;
                 Exercise ex = service.findExerciseByName(name)
-                        .orElseThrow(() -> new FitLogException("动作不存在: " + name));
-                double weight = readDouble("重量 kg: ");
-                int reps = readInt("次数: ");
+                        .orElseThrow(() -> new FitLogException("Exercise not found: " + name));
+                double weight = readDouble("Weight kg: ");
+                int reps = readInt("Reps: ");
                 SetRecord set = service.recordSet(session, ex, weight, reps);
-                System.out.println("已记录: " + set);
+                System.out.println("Recorded: " + set);
                 service.checkPR(ex, weight, reps).ifPresent(System.out::println);
             }
             service.finishSession(session);
-            System.out.println("本次训练已保存，共 " + session.getSets().size() + " 组，总容量 "
+            System.out.println("Workout saved: " + session.getSets().size() + " sets, total volume "
                     + Math.round(session.totalTonnage()) + " kg");
         } catch (FitLogException ex) {
-            System.out.println("✗ " + ex.getMessage());
+            System.out.println("Error: " + ex.getMessage());
         } catch (DateTimeParseException ex) {
-            System.out.println("✗ 日期格式不对，请用 YYYY-MM-DD（比如 2026-10-03），或直接回车用今天");
+            System.out.println("Error: invalid date; use YYYY-MM-DD (e.g. 2026-10-03), or press Enter for today");
         }
     }
 
-    // ---------- 4. 历史 ----------
+    // ---------- 4. History ----------
     private void handleViewHistory() {
         List<WorkoutSession> all = service.listSessions();
         if (all.isEmpty()) {
-            System.out.println("还没有训练记录");
+            System.out.println("No workout records yet");
             return;
         }
-        System.out.println("---- 历史训练 ----");
+        System.out.println("---- Workout history ----");
         for (WorkoutSession s : all) {
-            System.out.printf("%s  %d 组  容量 %.0f kg%n",
+            System.out.printf("%s  %d sets  volume %.0f kg%n",
                     s.getDate(), s.getSets().size(), s.totalTonnage());
         }
     }
 
     // ---------- 5. PR ----------
     private void handleShowPR() {
-        String name = readLine("要查哪个动作的 PR: ");
+        String name = readLine("PR for which exercise: ");
         Exercise ex = service.findExerciseByName(name)
-                .orElseThrow(() -> new FitLogException("动作不存在: " + name));
+                .orElseThrow(() -> new FitLogException("Exercise not found: " + name));
         double best = service.bestE1RM(ex);
         if (best <= 0) {
-            System.out.println("还没有 " + ex.getName() + " 的训练记录");
+            System.out.println("No workout records yet for " + ex.getName());
         } else {
-            System.out.printf("%s 历史最佳估算 1RM = %.1f kg%n", ex.getName(), best);
+            System.out.printf("%s estimated best 1RM = %.1f kg%n", ex.getName(), best);
         }
     }
 
-    // ---------- 6. 周容量 ----------
+    // ---------- 6. Weekly volume ----------
     private void handleWeeklySummary() {
-        String week = readLine("查看哪一周 (该周任意一天 YYYY-MM-DD，回车=本周): ");
+        String week = readLine("Which week (any day in it YYYY-MM-DD, Enter=this week): ");
         LocalDate anchor = week.isBlank() ? LocalDate.now() : LocalDate.parse(week);
         Map<MuscleGroup, Double> m = service.weeklyTonnageByGroup(anchor);
-        System.out.println("---- 周容量 ----");
+        System.out.println("---- Weekly volume ----");
         double total = m.remove(null);
         for (Map.Entry<MuscleGroup, Double> e : m.entrySet()) {
             System.out.printf("%s: %.0f kg%n", e.getKey().getLabel(), e.getValue());
         }
-        System.out.printf("合计: %.0f kg%n", total);
+        System.out.printf("Total: %.0f kg%n", total);
     }
 
-    // ---------- 7. 体重 + 营养 ----------
+    // ---------- 7. Bodyweight + nutrition ----------
     private void handleBodyweightAndNutrition() {
-        double kg = readDouble("录入今日体重 kg: ");
+        double kg = readDouble("Today's bodyweight kg: ");
         service.recordBodyweight(LocalDate.now(), kg);
-        System.out.println("已记录: " + kg + " kg");
+        System.out.println("Logged: " + kg + " kg");
 
-        String day = readLine("今天是训练日吗？(y/n): ");
+        String day = readLine("Is today a training day? (y/n): ");
         boolean training = day.trim().equalsIgnoreCase("y") || day.trim().equalsIgnoreCase("yes");
         NutritionResult r = service.nutritionGoal(kg, training);
-        System.out.println("今日营养目标: " + r);
+        System.out.println("Today's nutrition target: " + r);
     }
 
-    // ---------- 输入工具 ----------
+    // ---------- Input helpers ----------
 
     private String readLine(String prompt) {
         System.out.print(prompt);
@@ -186,7 +186,7 @@ public class CuiMain {
         line = line.trim();
         if (":quit".equalsIgnoreCase(line)) {
             running = false;
-            System.out.println("再见!");
+            System.out.println("Goodbye!");
             return "";
         }
         return line;
@@ -198,7 +198,7 @@ public class CuiMain {
             try {
                 return Double.parseDouble(s);
             } catch (NumberFormatException e) {
-                System.out.println("请输入数字");
+                System.out.println("Please enter a number");
             }
         }
     }
@@ -209,7 +209,7 @@ public class CuiMain {
             try {
                 return Integer.parseInt(s);
             } catch (NumberFormatException e) {
-                System.out.println("请输入整数");
+                System.out.println("Please enter an integer");
             }
         }
     }
@@ -222,7 +222,7 @@ public class CuiMain {
                 int i = Integer.parseInt(s);
                 if (i >= 1 && i <= values.length) return values[i - 1];
             } catch (NumberFormatException ignored) {}
-            System.out.println("请输入 1-" + values.length);
+            System.out.println("Please enter 1-" + values.length);
         }
     }
 }

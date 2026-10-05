@@ -10,7 +10,7 @@ public class EpleyPrCalculatorTest {
 
     @Test
     public void oneRepMaxIsExact() {
-        // 1RM 时公式应为 weight * (1 + 1/30) ≈ 1.0333 * weight
+        // At 1 rep the formula gives weight * (1 + 1/30) ~ 1.0333 * weight
         double e1 = calc.estimateE1RM(100, 1);
         assertEquals(100 * (1 + 1.0/30), e1, 0.01);
     }

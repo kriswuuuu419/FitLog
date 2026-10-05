@@ -10,9 +10,9 @@ public class SetRecord {
     }
 
     public SetRecord(Exercise exercise, double weightKg, int reps) {
-        if (exercise == null) throw new IllegalArgumentException("动作不能为空");
-        if (weightKg <= 0) throw new IllegalArgumentException("重量必须为正数");
-        if (reps < 1) throw new IllegalArgumentException("次数至少为 1");
+        if (exercise == null) throw new IllegalArgumentException("exercise must not be null");
+        if (weightKg <= 0) throw new IllegalArgumentException("weight must be positive");
+        if (reps < 1) throw new IllegalArgumentException("reps must be at least 1");
         this.exercise = exercise;
         this.weightKg = weightKg;
         this.reps = reps;

@@ -178,7 +178,7 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
     @Override
     public List<WorkoutSession> findSessionsBetween(LocalDate from, LocalDate to) {
         if (from == null || to == null) {
-            throw new FitLogException("查询区间的起止日期不能为空", null);
+            throw new FitLogException("date range start and end must not be null", null);
         }
         return loadSessions(from, to);
     }

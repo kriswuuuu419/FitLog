@@ -1,41 +1,54 @@
-# FitLog — 个人健身训练日志
+# FitLog — Personal Fitness Workout Journal
 
-COMP603 / ENSE600 作业 1。Java 17 + Maven，CUI 命令行应用。
+A workout & nutrition journal built for COMP603 / ENSE600 (Group 22).
 
-## 编译与运行
+- **Assignment 1:** Java 17 + Maven **CUI** application with JSON file storage.
+- **Assignment 2:** **Swing GUI** backed by an embedded Apache Derby database, reusing the same domain and service layers.
 
-前置：JDK 17+、Maven 3.6+。
+## Build & run
+
+Prerequisites: JDK 17+ and Maven 3.6+.
+
+Compile and run the command-line app (Assignment 1):
 
 ```bash
 mvn clean compile exec:java
 ```
 
-跑测试：
+Launch the Swing GUI (Assignment 2):
+
+```bash
+mvn clean compile exec:java -Dexec.args="--gui"
+```
+
+Run the tests:
 
 ```bash
 mvn test
 ```
 
-数据保存在 `data/fitlog.json`（首次运行自动创建）。无登录账号。
+The CUI stores data in `data/fitlog.json` and the GUI in an embedded Derby database under `data/fitlog-derby` (both created automatically on first run). There is no login.
 
-## 功能
+## Features
 
-- 管理动作库（胸/背/腿/肩/臂/核心，复合/孤立）
-- 记录一次训练：选动作 → 录若干组（重量×次数）
-- 自动 PR 检测：Epley 公式估算 1RM，破纪录当场提示
-- 查看历史训练、动作 PR、周容量统计
-- 记录体重，自动计算每日蛋白质/脂肪/碳水目标
+- Manage an exercise library (Chest / Back / Legs / Shoulders / Arms / Core; Compound / Isolation).
+- Record a workout: pick an exercise and log multiple sets (weight x reps); sets entered on the same day are grouped into one training session.
+- Automatic PR detection: the Epley formula estimates 1RM and flags a new personal record as you log.
+- View workout history, per-exercise PRs and weekly training volume by muscle group.
+- Log bodyweight and get daily protein / fat / carb and calorie targets.
+- Referential integrity: an exercise still referenced by saved sets cannot be deleted, and the app explains why.
 
-## 代码结构
+## Architecture
 
 ```
 src/main/java/com/cjlu/fitlog/
-├── FitLogApplication.java      启动入口，组装依赖
-├── domain/                     纯数据类 + 枚举
-├── service/                    业务规则 + 策略接口（PrCalculator / NutritionCalculator）
-├── repository/                 持久化抽象 + JSON 实现
-├── cui/                        命令行菜单
-└── exception/                  FitLogException
+├── FitLogApplication.java        Entry point; wires dependencies and selects CUI/GUI
+├── domain/                       Data classes and enums
+├── service/                      Business rules and strategy interfaces (PrCalculator / NutritionCalculator)
+├── repository/                   Persistence interface with JSON and embedded Derby implementations
+├── cui/                          Command-line menus (Assignment 1)
+├── gui/                          Swing interface (Assignment 2)
+└── exception/                    FitLogException
 ```
 
-作业 2 扩展点：新增 `DerbyWorkoutRepository` 实现 `WorkoutRepository` 接口，业务代码不动。
+Assignment 2 adds `DerbyWorkoutRepository`, which implements the same `WorkoutRepository` interface, so the service and domain code are unchanged.

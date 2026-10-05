@@ -9,7 +9,7 @@ public record NutritionResult(
     @Override
     public String toString() {
         return String.format(
-                "蛋白质 %.0fg (%dkcal)  脂肪 %.0fg (%dkcal)  碳水 %.0fg (%dkcal)  合计 %dkcal",
+                "Protein %.0fg (%dkcal)  Fat %.0fg (%dkcal)  Carbs %.0fg (%dkcal)  Total %dkcal",
                 proteinGrams, Math.round(proteinGrams * 4),
                 fatGrams, Math.round(fatGrams * 9),
                 carbGrams, Math.round(carbGrams * 4),

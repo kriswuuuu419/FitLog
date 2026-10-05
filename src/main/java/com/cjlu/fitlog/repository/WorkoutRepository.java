@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 数据访问接口，业务层只依赖它，不关心底层是 JSON 文件还是嵌入式 Derby。
- * 读操作与写操作各自都超过三个，覆盖动作库 / 训练记录 / 体重三类数据的增删查。
+ * Data-access interface. The service layer depends only on this abstraction and does
+ * not care whether the backing store is a JSON file or embedded Derby. Both reads and
+ * writes exceed three each, covering create/delete/query across exercises, sessions
+ * and bodyweight entries.
  */
 public interface WorkoutRepository {
 

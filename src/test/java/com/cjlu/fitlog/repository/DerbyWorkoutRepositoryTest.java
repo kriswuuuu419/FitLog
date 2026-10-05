@@ -108,7 +108,7 @@ public class DerbyWorkoutRepositoryTest {
     @Test
     public void exerciseUpsertUpdatesInsteadOfDuplicating() {
         repo.saveExercise(new Exercise("Bench Press", MuscleGroup.CHEST, WorkoutType.COMPOUND));
-        // 同名再次保存（改了肌群）：upsert 应当更新原行，而不是插入第二行
+        // Saving again under the same name with a different group updates the row instead of inserting a second one
         repo.saveExercise(new Exercise("Bench Press", MuscleGroup.BACK, WorkoutType.COMPOUND));
         List<Exercise> all = repo.findAllExercises();
         assertEquals(1, all.size());
@@ -160,7 +160,7 @@ public class DerbyWorkoutRepositoryTest {
 
         List<WorkoutSession> september = repo.findSessionsBetween(
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
-        assertEquals(2, september.size()); // 9/1 与 9/15，区间含端点；10/1 被排除
+        assertEquals(2, september.size()); // 9/1 and 9/15, endpoints inclusive; 10/1 excluded
     }
 
     @Test

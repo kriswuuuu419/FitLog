@@ -13,11 +13,11 @@ public class Exercise {
 
     public Exercise(String name, MuscleGroup muscleGroup, WorkoutType type) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("动作名称不能为空");
+            throw new IllegalArgumentException("exercise name must not be empty");
         }
         this.name = name.trim();
-        this.muscleGroup = Objects.requireNonNull(muscleGroup, "肌群不能为空");
-        this.type = Objects.requireNonNull(type, "动作类型不能为空");
+        this.muscleGroup = Objects.requireNonNull(muscleGroup, "muscleGroup must not be null");
+        this.type = Objects.requireNonNull(type, "type must not be null");
     }
 
     public String getName() { return name; }

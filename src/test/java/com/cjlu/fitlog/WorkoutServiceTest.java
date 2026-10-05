@@ -28,17 +28,17 @@ public class WorkoutServiceTest {
     public void setUp() {
         repo = new InMemoryWorkoutRepository();
         service = new WorkoutService(repo, new EpleyPrCalculator(), new DefaultNutritionCalculator());
-        bench = service.addExercise("杠铃卧推", MuscleGroup.CHEST, WorkoutType.COMPOUND);
+        bench = service.addExercise("Bench Press", MuscleGroup.CHEST, WorkoutType.COMPOUND);
     }
 
     @Test
     public void newPrIsDetected() {
-        // 先存一组历史：100kg x 5 -> e1RM = 116.67
+        // First a historical set: 100kg x 5 -> e1RM = 116.67
         WorkoutSession old = service.startSession(LocalDate.of(2026, 9, 1), "");
         service.recordSet(old, bench, 100, 5);
         service.finishSession(old);
 
-        // 新一组：105kg x 5 -> e1RM = 122.5，应该触发 PR
+        // Then a heavier set: 105kg x 5 -> e1RM = 122.5, which should trigger a PR
         Optional<String> msg = service.checkPR(bench, 105, 5);
         assertTrue(msg.isPresent());
         assertTrue(msg.get().contains("PR"));
@@ -56,7 +56,7 @@ public class WorkoutServiceTest {
 
     @Test
     public void weeklyTonnageSumsCorrectly() {
-        WorkoutSession s = service.startSession(LocalDate.of(2026, 9, 28), ""); // 本周一
+        WorkoutSession s = service.startSession(LocalDate.of(2026, 9, 28), ""); // Monday of that week
         service.recordSet(s, bench, 100, 5); // 500 kg
         service.recordSet(s, bench, 100, 5); // 500 kg
         service.finishSession(s);
@@ -69,11 +69,11 @@ public class WorkoutServiceTest {
     @Test
     public void duplicateExerciseNameRejected() {
         try {
-            service.addExercise("杠铃卧推", MuscleGroup.CHEST, WorkoutType.COMPOUND);
+            service.addExercise("Bench Press", MuscleGroup.CHEST, WorkoutType.COMPOUND);
         } catch (RuntimeException e) {
-            assertTrue(e.getMessage().contains("已存在"));
+            assertTrue(e.getMessage().contains("already exists"));
             return;
         }
-        throw new AssertionError("应该抛出重复动作异常");
+        throw new AssertionError("Expected a duplicate-exercise exception");
     }
 }

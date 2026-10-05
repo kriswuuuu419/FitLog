@@ -9,7 +9,7 @@ public class BodyweightEntry {
     public BodyweightEntry() {}
 
     public BodyweightEntry(LocalDate date, double kg) {
-        if (kg <= 0 || kg > 500) throw new IllegalArgumentException("体重数值不合理");
+        if (kg <= 0 || kg > 500) throw new IllegalArgumentException("bodyweight out of valid range (1-500 kg)");
         this.date = date;
         this.kg = kg;
     }
