@@ -157,6 +157,13 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
             ps.setString(1, name);
             ps.executeUpdate();
         } catch (SQLException e) {
+            // SQL state 235xx is an integrity-constraint violation; 23503 is the foreign-key
+            // restriction fired when saved sets still reference this exercise.
+            if (e.getSQLState() != null && e.getSQLState().startsWith("235")) {
+                throw new FitLogException("Cannot delete exercise \"" + name
+                        + "\": it is still referenced by saved workout sets. "
+                        + "Delete those sessions first.", e);
+            }
             throw new FitLogException("delete exercise failed", e);
         }
     }

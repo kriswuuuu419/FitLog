@@ -1,6 +1,7 @@
 package com.cjlu.fitlog.repository;
 
 import com.cjlu.fitlog.domain.*;
+import com.cjlu.fitlog.exception.FitLogException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -112,6 +113,26 @@ public class DerbyWorkoutRepositoryTest {
         List<Exercise> all = repo.findAllExercises();
         assertEquals(1, all.size());
         assertEquals(MuscleGroup.BACK, all.get(0).getMuscleGroup());
+    }
+
+    @Test
+    public void cannotDeleteExerciseReferencedBySets() {
+        repo.saveExercise(new Exercise("Squat", MuscleGroup.LEGS, WorkoutType.COMPOUND));
+        Exercise squat = repo.findAllExercises().get(0);
+        WorkoutSession s = new WorkoutSession(LocalDate.of(2026, 10, 5), "");
+        s.addSet(new SetRecord(squat, 60, 5));
+        repo.saveSession(s);
+
+        try {
+            repo.deleteExercise("Squat");
+            fail("Deleting an exercise referenced by saved sets should be rejected");
+        } catch (FitLogException expected) {
+            // foreign-key protection: the message explains the reference, rows remain
+            assertTrue(expected.getMessage().contains("referenced"));
+        }
+        assertEquals(1, repo.findAllExercises().size());
+        assertEquals(1, repo.findAllSessions().size());
+        assertEquals(1, repo.findAllSessions().get(0).getSets().size());
     }
 
     @Test
