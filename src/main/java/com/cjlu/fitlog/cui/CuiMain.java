@@ -32,16 +32,24 @@ public class CuiMain {
         while (running) {
             printMenu();
             String choice = readLine("> ");
-            switch (choice) {
-                case "0": running = false; System.out.println("再见!"); break;
-                case "1": handleAddExercise(); break;
-                case "2": handleListExercises(); break;
-                case "3": handleRecordWorkout(); break;
-                case "4": handleViewHistory(); break;
-                case "5": handleShowPR(); break;
-                case "6": handleWeeklySummary(); break;
-                case "7": handleBodyweightAndNutrition(); break;
-                default: System.out.println("无效选项，请重新输入");
+            try {
+                switch (choice) {
+                    case "0": running = false; System.out.println("再见!"); break;
+                    case "1": handleAddExercise(); break;
+                    case "2": handleListExercises(); break;
+                    case "3": handleRecordWorkout(); break;
+                    case "4": handleViewHistory(); break;
+                    case "5": handleShowPR(); break;
+                    case "6": handleWeeklySummary(); break;
+                    case "7": handleBodyweightAndNutrition(); break;
+                    default: System.out.println("无效选项，请重新输入");
+                }
+            } catch (FitLogException ex) {
+                System.out.println("✗ " + ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                System.out.println("✗ 输入不合法: " + ex.getMessage());
+            } catch (DateTimeParseException ex) {
+                System.out.println("✗ 日期格式不对，请用 YYYY-MM-DD（比如 2026-10-03），或直接回车用今天");
             }
         }
     }
