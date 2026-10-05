@@ -14,7 +14,6 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,11 +51,7 @@ public class WorkoutService {
     }
 
     public Optional<Exercise> findExerciseByName(String name) {
-        if (name == null) return Optional.empty();
-        String n = name.trim();
-        return repo.findAllExercises().stream()
-                .filter(e -> e.getName().equalsIgnoreCase(n))
-                .findFirst();
+        return repo.findExerciseByName(name);
     }
 
     // ---------- Workout sessions ----------
@@ -134,8 +129,7 @@ public class WorkoutService {
         LocalDate sunday = monday.plusDays(6);
         Map<MuscleGroup, Double> byGroup = new LinkedHashMap<>();
         double total = 0;
-        for (WorkoutSession s : repo.findAllSessions()) {
-            if (s.getDate().isBefore(monday) || s.getDate().isAfter(sunday)) continue;
+        for (WorkoutSession s : repo.findSessionsBetween(monday, sunday)) {
             for (SetRecord set : s.getSets()) {
                 double t = set.tonnage();
                 byGroup.merge(set.getExercise().getMuscleGroup(), t, Double::sum);
@@ -153,11 +147,26 @@ public class WorkoutService {
     }
 
     public Optional<BodyweightEntry> latestBodyweight() {
-        return repo.findAllBodyweights().stream()
-                .max(Comparator.comparing(BodyweightEntry::getDate));
+        return repo.findLatestBodyweight();
+    }
+
+    public List<BodyweightEntry> findAllBodyweights() {
+        return repo.findAllBodyweights();
+    }
+
+    public void deleteBodyweight(LocalDate date) {
+        repo.deleteBodyweight(date);
     }
 
     public NutritionResult nutritionGoal(double bodyweightKg, boolean trainingDay) {
         return nutritionCalculator.calculate(bodyweightKg, trainingDay);
+    }
+
+    public void deleteExercise(String name) {
+        repo.deleteExercise(name);
+    }
+
+    public void deleteSession(LocalDate date) {
+        repo.deleteSession(date);
     }
 }

@@ -4,10 +4,12 @@ import com.cjlu.fitlog.domain.*;
 import com.cjlu.fitlog.exception.FitLogException;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Embedded Apache Derby implementation of WorkoutRepository.
@@ -69,6 +71,8 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
         }
     }
 
+    // ---------- Exercise reads / writes ----------
+
     @Override
     public List<Exercise> findAllExercises() {
         List<Exercise> out = new ArrayList<>();
@@ -87,48 +91,127 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
     }
 
     @Override
+    public Optional<Exercise> findExerciseByName(String name) {
+        if (name == null || name.isBlank()) return Optional.empty();
+        String sql = "SELECT name, muscle_group, type FROM exercises WHERE LOWER(name) = LOWER(?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(new Exercise(
+                        rs.getString("name"),
+                        MuscleGroup.valueOf(rs.getString("muscle_group")),
+                        WorkoutType.valueOf(rs.getString("type"))));
+                }
+            }
+        } catch (SQLException e) {
+            throw new FitLogException("find exercise by name failed", e);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Atomic upsert keyed on exercise name: UPDATE first, INSERT only when no row matched,
+     * all inside one transaction.
+     *
+     * We deliberately do not delete-then-insert: the {@code sets} table has a foreign key to
+     * exercises(name), so removing an exercise row that is already referenced by a workout
+     * would violate that constraint. Updating in place keeps the primary-key row intact.
+     * Embedded Derby 10.14 also only accepts a base table/table function (not a parameterised
+     * VALUES row) as the source of MERGE, so a single-statement MERGE upsert is unavailable;
+     * the transaction makes UPDATE+INSERT atomic instead.
+     */
+    @Override
     public void saveExercise(Exercise e) {
         try {
-            try (PreparedStatement del = conn.prepareStatement("DELETE FROM exercises WHERE name=?")) {
-                del.setString(1, e.getName());
-                del.executeUpdate();
+            conn.setAutoCommit(false);
+            int updated;
+            try (PreparedStatement up = conn.prepareStatement(
+                    "UPDATE exercises SET muscle_group=?, type=? WHERE name=?")) {
+                up.setString(1, e.getMuscleGroup().name());
+                up.setString(2, e.getType().name());
+                up.setString(3, e.getName());
+                updated = up.executeUpdate();
             }
-            try (PreparedStatement ins = conn.prepareStatement(
-                    "INSERT INTO exercises (name, muscle_group, type) VALUES (?,?,?)")) {
-                ins.setString(1, e.getName());
-                ins.setString(2, e.getMuscleGroup().name());
-                ins.setString(3, e.getType().name());
-                ins.executeUpdate();
+            if (updated == 0) {
+                try (PreparedStatement ins = conn.prepareStatement(
+                        "INSERT INTO exercises (name, muscle_group, type) VALUES (?,?,?)")) {
+                    ins.setString(1, e.getName());
+                    ins.setString(2, e.getMuscleGroup().name());
+                    ins.setString(3, e.getType().name());
+                    ins.executeUpdate();
+                }
             }
+            conn.commit();
         } catch (SQLException ex) {
-            throw new FitLogException("save exercise failed", ex);
+            try { conn.rollback(); } catch (SQLException ignored) {}
+            throw new FitLogException("save exercise failed, rolled back", ex);
+        } finally {
+            try { conn.setAutoCommit(true); } catch (SQLException ignored) {}
         }
     }
 
     @Override
+    public void deleteExercise(String name) {
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM exercises WHERE name=?")) {
+            ps.setString(1, name);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new FitLogException("delete exercise failed", e);
+        }
+    }
+
+    // ---------- Session reads / writes ----------
+
+    @Override
     public List<WorkoutSession> findAllSessions() {
+        return loadSessions(null, null);
+    }
+
+    @Override
+    public List<WorkoutSession> findSessionsBetween(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new FitLogException("查询区间的起止日期不能为空", null);
+        }
+        return loadSessions(from, to);
+    }
+
+    /**
+     * Assemble each session together with its sets in one place.
+     * When from/to are null all sessions are returned; otherwise only sessions in the
+     * inclusive date range are returned (used by the weekly volume summary).
+     */
+    private List<WorkoutSession> loadSessions(LocalDate from, LocalDate to) {
         Map<String, Exercise> exByName = new HashMap<>();
         for (Exercise e : findAllExercises()) exByName.put(e.getName(), e);
 
         List<WorkoutSession> out = new ArrayList<>();
-        String sessionSql = "SELECT id, date, notes FROM sessions ORDER BY date";
-        String setSql = "SELECT exercise_name, weight_kg, reps FROM sets WHERE session_id=?";
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sessionSql)) {
-            while (rs.next()) {
-                long sid = rs.getLong("id");
-                WorkoutSession s = new WorkoutSession(rs.getDate("date").toLocalDate(), rs.getString("notes"));
-                try (PreparedStatement ps = conn.prepareStatement(setSql)) {
-                    ps.setLong(1, sid);
-                    try (ResultSet srs = ps.executeQuery()) {
-                        while (srs.next()) {
-                            String en = srs.getString("exercise_name");
-                            Exercise ex = exByName.get(en);
-                            if (ex == null) continue;
-                            s.addSet(new SetRecord(ex, srs.getDouble("weight_kg"), srs.getInt("reps")));
+        String sql = (from == null)
+                ? "SELECT id, date, notes FROM sessions ORDER BY date"
+                : "SELECT id, date, notes FROM sessions WHERE date BETWEEN ? AND ? ORDER BY date";
+        try (PreparedStatement st = conn.prepareStatement(sql)) {
+            if (from != null) {
+                st.setDate(1, java.sql.Date.valueOf(from));
+                st.setDate(2, java.sql.Date.valueOf(to));
+            }
+            try (ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    long sid = rs.getLong("id");
+                    WorkoutSession s = new WorkoutSession(rs.getDate("date").toLocalDate(), rs.getString("notes"));
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT exercise_name, weight_kg, reps FROM sets WHERE session_id=?")) {
+                        ps.setLong(1, sid);
+                        try (ResultSet srs = ps.executeQuery()) {
+                            while (srs.next()) {
+                                String en = srs.getString("exercise_name");
+                                Exercise ex = exByName.get(en);
+                                if (ex == null) continue;
+                                s.addSet(new SetRecord(ex, srs.getDouble("weight_kg"), srs.getInt("reps")));
+                            }
                         }
                     }
+                    out.add(s);
                 }
-                out.add(s);
             }
         } catch (SQLException e) {
             throw new FitLogException("read sessions failed", e);
@@ -171,6 +254,25 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
     }
 
     @Override
+    public void deleteSession(LocalDate date) {
+        try {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM sets WHERE session_id IN (SELECT id FROM sessions WHERE date=?)")) {
+                ps.setDate(1, java.sql.Date.valueOf(date));
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM sessions WHERE date=?")) {
+                ps.setDate(1, java.sql.Date.valueOf(date));
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new FitLogException("delete session failed", e);
+        }
+    }
+
+    // ---------- Bodyweight reads / writes ----------
+
+    @Override
     public List<BodyweightEntry> findAllBodyweights() {
         List<BodyweightEntry> out = new ArrayList<>();
         try (Statement st = conn.createStatement();
@@ -183,19 +285,57 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
     }
 
     @Override
-    public void saveBodyweight(BodyweightEntry b) {
-        try {
-            try (PreparedStatement del = conn.prepareStatement("DELETE FROM bodyweights WHERE date=?")) {
-                del.setDate(1, java.sql.Date.valueOf(b.getDate()));
-                del.executeUpdate();
-            }
-            try (PreparedStatement ins = conn.prepareStatement("INSERT INTO bodyweights (date, kg) VALUES (?,?)")) {
-                ins.setDate(1, java.sql.Date.valueOf(b.getDate()));
-                ins.setDouble(2, b.getKg());
-                ins.executeUpdate();
+    public Optional<BodyweightEntry> findLatestBodyweight() {
+        String sql = "SELECT date, kg FROM bodyweights ORDER BY date DESC FETCH FIRST 1 ROW ONLY";
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) {
+                return Optional.of(new BodyweightEntry(rs.getDate("date").toLocalDate(), rs.getDouble("kg")));
             }
         } catch (SQLException e) {
-            throw new FitLogException("save bodyweight failed", e);
+            throw new FitLogException("read latest bodyweight failed", e);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Atomic upsert keyed on bodyweight date: UPDATE first, INSERT only when no row matched,
+     * all inside one transaction (one weight entry per day, later entry overwrites earlier).
+     */
+    @Override
+    public void saveBodyweight(BodyweightEntry b) {
+        try {
+            conn.setAutoCommit(false);
+            int updated;
+            try (PreparedStatement up = conn.prepareStatement(
+                    "UPDATE bodyweights SET kg=? WHERE date=?")) {
+                up.setDouble(1, b.getKg());
+                up.setDate(2, java.sql.Date.valueOf(b.getDate()));
+                updated = up.executeUpdate();
+            }
+            if (updated == 0) {
+                try (PreparedStatement ins = conn.prepareStatement(
+                        "INSERT INTO bodyweights (date, kg) VALUES (?,?)")) {
+                    ins.setDate(1, java.sql.Date.valueOf(b.getDate()));
+                    ins.setDouble(2, b.getKg());
+                    ins.executeUpdate();
+                }
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            try { conn.rollback(); } catch (SQLException ignored) {}
+            throw new FitLogException("save bodyweight failed, rolled back", e);
+        } finally {
+            try { conn.setAutoCommit(true); } catch (SQLException ignored) {}
+        }
+    }
+
+    @Override
+    public void deleteBodyweight(LocalDate date) {
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM bodyweights WHERE date=?")) {
+            ps.setDate(1, java.sql.Date.valueOf(date));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new FitLogException("delete bodyweight failed", e);
         }
     }
 

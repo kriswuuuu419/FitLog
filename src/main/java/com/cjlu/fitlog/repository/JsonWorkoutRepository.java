@@ -12,9 +12,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 public class JsonWorkoutRepository implements WorkoutRepository {
 
@@ -75,6 +78,14 @@ public class JsonWorkoutRepository implements WorkoutRepository {
         return new ArrayList<>(snapshot.exercises);
     }
 
+    @Override public Optional<Exercise> findExerciseByName(String name) {
+        if (name == null) return Optional.empty();
+        String n = name.trim();
+        return snapshot.exercises.stream()
+                .filter(x -> x.getName().equalsIgnoreCase(n))
+                .findFirst();
+    }
+
     @Override public void saveExercise(Exercise e) {
         snapshot.exercises.removeIf(x -> x.equals(e));
         snapshot.exercises.add(e);
@@ -83,6 +94,16 @@ public class JsonWorkoutRepository implements WorkoutRepository {
 
     @Override public List<WorkoutSession> findAllSessions() {
         return new ArrayList<>(snapshot.sessions);
+    }
+
+    @Override public List<WorkoutSession> findSessionsBetween(LocalDate from, LocalDate to) {
+        List<WorkoutSession> out = new ArrayList<>();
+        for (WorkoutSession s : snapshot.sessions) {
+            if (!s.getDate().isBefore(from) && !s.getDate().isAfter(to)) {
+                out.add(s);
+            }
+        }
+        return out;
     }
 
     @Override public void saveSession(WorkoutSession s) {
@@ -95,9 +116,29 @@ public class JsonWorkoutRepository implements WorkoutRepository {
         return new ArrayList<>(snapshot.bodyweights);
     }
 
+    @Override public Optional<BodyweightEntry> findLatestBodyweight() {
+        return snapshot.bodyweights.stream()
+                .max(Comparator.comparing(BodyweightEntry::getDate));
+    }
+
     @Override public void saveBodyweight(BodyweightEntry b) {
         snapshot.bodyweights.removeIf(x -> x.getDate().equals(b.getDate()));
         snapshot.bodyweights.add(b);
+        persist();
+    }
+
+    @Override public void deleteBodyweight(LocalDate date) {
+        snapshot.bodyweights.removeIf(x -> x.getDate().equals(date));
+        persist();
+    }
+
+    @Override public void deleteExercise(String name) {
+        snapshot.exercises.removeIf(x -> x.getName().equalsIgnoreCase(name));
+        persist();
+    }
+
+    @Override public void deleteSession(java.time.LocalDate date) {
+        snapshot.sessions.removeIf(x -> x.getDate().equals(date));
         persist();
     }
 }
