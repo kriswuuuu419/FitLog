@@ -11,6 +11,7 @@ import com.cjlu.fitlog.service.WorkoutService;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 public class FitLogApplication {
 
@@ -30,6 +31,9 @@ public class FitLogApplication {
     }
 
     public static void bootGui() {
+        // Force an English Swing locale so standard dialogs show OK/Cancel and English
+        // titles consistently on a Chinese-localised Windows. The CUI keeps its Chinese text.
+        Locale.setDefault(Locale.ENGLISH);
         DerbyWorkoutRepository repo = new DerbyWorkoutRepository("data/fitlog-derby");
         Runtime.getRuntime().addShutdownHook(new Thread(repo::shutdown));
         WorkoutService service = new WorkoutService(repo, new EpleyPrCalculator(), new DefaultNutritionCalculator());

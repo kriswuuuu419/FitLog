@@ -128,7 +128,7 @@ class BodyweightDialog extends JDialog {
                 }
                 }.execute();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage(), "Invalid input", JOptionPane.ERROR_MESSAGE);
             }
         });
         pack(); setLocationRelativeTo(parent);
@@ -203,7 +203,7 @@ class AddSessionDialog extends JDialog {
                 }
                 }.execute();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage(), "Invalid input", JOptionPane.ERROR_MESSAGE);
             }
         });
         setSize(420, 240); setLocationRelativeTo(parent);
