@@ -146,8 +146,18 @@ class AddSessionDialog extends JDialog {
         form.setOpaque(false);
         JTextField date = new JTextField(LocalDate.now().toString());
         DefaultComboBoxModel<Exercise> model = new DefaultComboBoxModel<>();
-        for (Exercise ex : service.listExercises()) model.addElement(ex);
         JComboBox<Exercise> exercise = new JComboBox<>(model);
+        new SwingWorker<List<Exercise>, Void>() {
+            @Override protected List<Exercise> doInBackground() { return service.listExercises(); }
+            @Override protected void done() {
+                try {
+                    for (Exercise ex : get()) model.addElement(ex);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Cannot load exercises: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
         JTextField weight = new JTextField();
         JTextField reps = new JTextField();
         form.add(new JLabel("date:")); form.add(date);
@@ -216,15 +226,25 @@ class PrBoardDialog extends JDialog {
         t.setShowVerticalLines(false);
         t.setSelectionBackground(new Color(220, 252, 231));
 
-        List<Exercise> exs = service.listExercises();
-        if (exs.isEmpty()) {
-            m.addRow(new Object[]{"No exercises yet", ""});
-        } else {
-            for (Exercise ex : exs) {
-                double best = service.bestE1RM(ex);
-                m.addRow(new Object[]{ex.getName(), String.format("%.1f", best)});
+        new SwingWorker<Object[][], Void>() {
+            @Override protected Object[][] doInBackground() {
+                List<Exercise> exs = service.listExercises();
+                if (exs.isEmpty()) return new Object[][]{{"No exercises yet", ""}};
+                Object[][] rows = new Object[exs.size()][2];
+                for (int i = 0; i < exs.size(); i++) {
+                    rows[i] = new Object[]{exs.get(i).getName(),
+                            String.format("%.1f", service.bestE1RM(exs.get(i)))};
+                }
+                return rows;
             }
-        }
+            @Override protected void done() {
+                try {
+                    for (Object[] row : get()) m.addRow(row);
+                } catch (Exception ex) {
+                    m.addRow(new Object[]{"Load failed", ex.getMessage()});
+                }
+            }
+        }.execute();
         JScrollPane sp = new JScrollPane(t);
         sp.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         add(sp, BorderLayout.CENTER);
@@ -277,13 +297,26 @@ class WeeklyDialog extends JDialog {
         t.setGridColor(new Color(220, 235, 225));
         t.setShowVerticalLines(false);
 
-        Map<MuscleGroup, Double> weekly = service.weeklyTonnageByGroup(LocalDate.now());
-        double total = 0;
-        for (Map.Entry<MuscleGroup, Double> en : weekly.entrySet()) {
-            if (en.getKey() == null) { total = en.getValue(); continue; }
-            m.addRow(new Object[]{en.getKey().toString(), String.format("%,.0f", en.getValue())});
-        }
-        m.addRow(new Object[]{"TOTAL", String.format("%,.0f", total)});
+        new SwingWorker<Object[][], Void>() {
+            @Override protected Object[][] doInBackground() {
+                Map<MuscleGroup, Double> weekly = service.weeklyTonnageByGroup(LocalDate.now());
+                java.util.List<Object[]> rows = new java.util.ArrayList<>();
+                double total = 0;
+                for (Map.Entry<MuscleGroup, Double> en : weekly.entrySet()) {
+                    if (en.getKey() == null) { total = en.getValue(); continue; }
+                    rows.add(new Object[]{en.getKey().toString(), String.format("%,.0f", en.getValue())});
+                }
+                rows.add(new Object[]{"TOTAL", String.format("%,.0f", total)});
+                return rows.toArray(new Object[0][]);
+            }
+            @Override protected void done() {
+                try {
+                    for (Object[] r : get()) m.addRow(r);
+                } catch (Exception ex) {
+                    m.addRow(new Object[]{"Load failed", ex.getMessage()});
+                }
+            }
+        }.execute();
 
         JScrollPane sp = new JScrollPane(t);
         sp.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -308,15 +341,26 @@ class BodyweightHistoryDialog extends JDialog {
         t.setShowVerticalLines(false);
         t.setSelectionBackground(new Color(220, 252, 231));
 
-        List<BodyweightEntry> entries = service.findAllBodyweights();
-        entries.sort((a, b) -> b.getDate().compareTo(a.getDate()));
-        if (entries.isEmpty()) {
-            m.addRow(new Object[]{"No records yet", ""});
-        } else {
-            for (BodyweightEntry e : entries) {
-                m.addRow(new Object[]{e.getDate().toString(), String.format("%.1f", e.getKg())});
+        new SwingWorker<Object[][], Void>() {
+            @Override protected Object[][] doInBackground() {
+                List<BodyweightEntry> entries = service.findAllBodyweights();
+                entries.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+                if (entries.isEmpty()) return new Object[][]{{"No records yet", ""}};
+                Object[][] rows = new Object[entries.size()][2];
+                for (int i = 0; i < entries.size(); i++) {
+                    rows[i] = new Object[]{entries.get(i).getDate().toString(),
+                            String.format("%.1f", entries.get(i).getKg())};
+                }
+                return rows;
             }
-        }
+            @Override protected void done() {
+                try {
+                    for (Object[] r : get()) m.addRow(r);
+                } catch (Exception ex) {
+                    m.addRow(new Object[]{"Load failed", ex.getMessage()});
+                }
+            }
+        }.execute();
         JScrollPane sp = new JScrollPane(t);
         sp.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         add(sp, BorderLayout.CENTER);

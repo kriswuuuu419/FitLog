@@ -85,7 +85,7 @@ public class DerbyWorkoutRepositoryTest {
     @Test
     public void exerciseUpsertUpdatesInsteadOfDuplicating() {
         repo.saveExercise(new Exercise("Bench Press", MuscleGroup.CHEST, WorkoutType.COMPOUND));
-        // 同名再次保存（改了肌群）：MERGE 应当更新原行，而不是插入第二行
+        // 同名再次保存（改了肌群）：upsert 应当更新原行，而不是插入第二行
         repo.saveExercise(new Exercise("Bench Press", MuscleGroup.BACK, WorkoutType.COMPOUND));
         List<Exercise> all = repo.findAllExercises();
         assertEquals(1, all.size());
