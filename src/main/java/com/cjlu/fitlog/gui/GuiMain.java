@@ -21,7 +21,7 @@ public class GuiMain {
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame(service);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(960, 640);
+            frame.setSize(1000, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
             frame.refreshAll();

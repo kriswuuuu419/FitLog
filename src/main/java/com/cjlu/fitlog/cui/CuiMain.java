@@ -111,6 +111,8 @@ public class CuiMain {
                     + Math.round(session.totalTonnage()) + " kg");
         } catch (FitLogException ex) {
             System.out.println("✗ " + ex.getMessage());
+        } catch (DateTimeParseException ex) {
+            System.out.println("✗ 日期格式不对，请用 YYYY-MM-DD（比如 2026-10-03），或直接回车用今天");
         }
     }
 
