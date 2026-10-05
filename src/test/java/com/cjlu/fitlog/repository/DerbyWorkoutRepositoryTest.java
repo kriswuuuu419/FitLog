@@ -54,6 +54,28 @@ public class DerbyWorkoutRepositoryTest {
     }
 
     @Test
+    public void sameDaySavesMergeIntoOneSession() {
+        repo.saveExercise(new Exercise("Squat", MuscleGroup.LEGS, WorkoutType.COMPOUND));
+        Exercise squat = repo.findAllExercises().get(0);
+
+        LocalDate day = LocalDate.of(2026, 10, 3);
+        // The GUI saves each set through a brand-new, single-set session object.
+        WorkoutSession first = new WorkoutSession(day, "");
+        first.addSet(new SetRecord(squat, 60, 5));
+        repo.saveSession(first);
+
+        WorkoutSession second = new WorkoutSession(day, "");
+        second.addSet(new SetRecord(squat, 62.5, 5));
+        repo.saveSession(second);
+
+        List<WorkoutSession> all = repo.findAllSessions();
+        assertEquals(1, all.size());
+        assertEquals(2, all.get(0).getSets().size());
+        assertEquals(60.0, all.get(0).getSets().get(0).getWeightKg(), 0.001);
+        assertEquals(62.5, all.get(0).getSets().get(1).getWeightKg(), 0.001);
+    }
+
+    @Test
     public void bodyweightUpsert() {
         LocalDate d = LocalDate.now();
         repo.saveBodyweight(new BodyweightEntry(d, 80.0));

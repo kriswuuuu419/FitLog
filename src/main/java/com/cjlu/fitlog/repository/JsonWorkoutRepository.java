@@ -107,8 +107,17 @@ public class JsonWorkoutRepository implements WorkoutRepository {
     }
 
     @Override public void saveSession(WorkoutSession s) {
-        snapshot.sessions.removeIf(x -> x.getDate().equals(s.getDate()) && x.getSets().size() == s.getSets().size());
-        snapshot.sessions.add(s);
+        // Upsert by date: append the new sets to that day's session when one already exists
+        // (the GUI hands over a fresh one-set session object on every dialog save), otherwise
+        // add a new session.
+        WorkoutSession existing = snapshot.sessions.stream()
+                .filter(x -> x.getDate().equals(s.getDate()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            s.getSets().forEach(existing::addSet);
+        } else {
+            snapshot.sessions.add(s);
+        }
         persist();
     }
 

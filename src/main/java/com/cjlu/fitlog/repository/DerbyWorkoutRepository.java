@@ -223,26 +223,41 @@ public class DerbyWorkoutRepository implements WorkoutRepository {
     public void saveSession(WorkoutSession s) {
         try {
             conn.setAutoCommit(false);
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO sessions (date, notes) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS)) {
-                ps.setDate(1, java.sql.Date.valueOf(s.getDate()));
-                ps.setString(2, s.getNotes());
-                ps.executeUpdate();
-                ResultSet keys = ps.getGeneratedKeys();
-                long sid = 0;
-                if (keys.next()) sid = keys.getLong(1);
-
-                try (PreparedStatement sp = conn.prepareStatement(
-                        "INSERT INTO sets (session_id, exercise_name, weight_kg, reps) VALUES (?,?,?,?)")) {
-                    for (SetRecord set : s.getSets()) {
-                        sp.setLong(1, sid);
-                        sp.setString(2, set.getExercise().getName());
-                        sp.setDouble(3, set.getWeightKg());
-                        sp.setInt(4, set.getReps());
-                        sp.addBatch();
+            // Upsert the parent row by date: reuse the row for that date when it already
+            // exists so sets saved one at a time from the GUI merge into one session;
+            // otherwise insert a new session row.
+            long sid;
+            try (PreparedStatement q = conn.prepareStatement(
+                    "SELECT id FROM sessions WHERE date=?")) {
+                q.setDate(1, java.sql.Date.valueOf(s.getDate()));
+                try (ResultSet rs = q.executeQuery()) {
+                    if (rs.next()) {
+                        sid = rs.getLong(1);
+                    } else {
+                        try (PreparedStatement ps = conn.prepareStatement(
+                                "INSERT INTO sessions (date, notes) VALUES (?, ?)",
+                                Statement.RETURN_GENERATED_KEYS)) {
+                            ps.setDate(1, java.sql.Date.valueOf(s.getDate()));
+                            ps.setString(2, s.getNotes());
+                            ps.executeUpdate();
+                            try (ResultSet keys = ps.getGeneratedKeys()) {
+                                sid = keys.next() ? keys.getLong(1) : 0;
+                            }
+                        }
                     }
-                    sp.executeBatch();
                 }
+            }
+            // Append this save's sets; any existing sets for that date are preserved.
+            try (PreparedStatement sp = conn.prepareStatement(
+                    "INSERT INTO sets (session_id, exercise_name, weight_kg, reps) VALUES (?,?,?,?)")) {
+                for (SetRecord set : s.getSets()) {
+                    sp.setLong(1, sid);
+                    sp.setString(2, set.getExercise().getName());
+                    sp.setDouble(3, set.getWeightKg());
+                    sp.setInt(4, set.getReps());
+                    sp.addBatch();
+                }
+                sp.executeBatch();
             }
             conn.commit();
         } catch (SQLException e) {
